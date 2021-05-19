@@ -10,6 +10,8 @@ from judgmentsConfig import judgmentsConfig
 from sorter import threSort
 from newConfigWindow import newConf
 from cutJudgmentsConfig import cutJudgmentsConfig
+from duplicationWindow import duplWin
+from shutil import copyfile
 import traceback
 
 
@@ -33,7 +35,7 @@ class App(QWidget):
         self.top = 100
         self.width = 800
         self.height = 600
-        self.windowName = 'HSV Configurator (Version : 0.1.7)'
+        self.windowName = 'HSV Configurator (Version : 0.1.8)'
         self.Arial12Font = QFont('Arial', 12)
         self.Arial12Font.setBold(True)
         self.Arial12Font.setPixelSize(16)
@@ -119,11 +121,40 @@ class App(QWidget):
         self.plsSelConfLabel.setFont(self.Arial12Font)
         self.plsSelConfLabel.show()
 
+        self.dupliButton = QPushButton('Copy', self)
+        self.dupliButton.move(460, 570)
+        self.dupliButton.resize(80, 23)
+        self.dupliButton.clicked.connect(self.dupliClick)
+        self.dupliButton.show()
+
         self.exitButton = QPushButton('Exit', self)
         self.exitButton.move(710, 570)
         self.exitButton.resize(80, 23)
         self.exitButton.clicked.connect(self.exitClick)
         self.exitButton.show()
+
+    def dupliClick(self):
+        if self.confList.currentItem():
+            self.duplWin = duplWin(self.confList.currentItem().text(), dark_mode)
+            self.duplWin.confirmButton.clicked.connect(self.duplWinClick)
+        else:
+            self.plsSelConfLabel.setText('You need to choose a config')
+
+    def duplWinClick(self):
+        name = self.duplWin.nameTB.text()
+        name = name.replace('<', '_').replace('>', '_').replace(':', '_').replace('"', '_').replace('/', '_')
+        name = name.replace('\\', '_').replace('|', '_').replace('?', '_').replace('*', '_')
+        if name == '':
+            self.duplWin.confirmLabel.setText('File name cannot be empty')
+        else:
+            if os.path.exists(path + self.duplWin.nameTB.text() + '.json'):
+                self.duplWin.confirmLabel.setText('A config already exists with this name')
+            else:
+                self.duplWin.hide()
+                src = path + self.confList.currentItem().data(Qt.UserRole)['path']
+                dst = path + name + '.json'
+                copyfile(src, dst)
+        self.refreshClick()
 
     def exitClick(self):
         self.close()
