@@ -9,4 +9,4 @@ To select your HSV directory, you need to click `Browse` and then, navigate insi
 
 # Crashes, bugs and missing features
 If a crash occurs, you can open a new issue with the content of `crash-report.txt` in `Settings\Logs`
-For any feedback, you can send me a DM on discord: Moréo#1809
+For any feedback, you can send me a DM on discord: Moréo#4321
