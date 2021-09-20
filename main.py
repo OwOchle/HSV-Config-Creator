@@ -1,13 +1,13 @@
 import sys
-from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QMessageBox, QLabel, QLineEdit, QCheckBox, QComboBox
-from PyQt5.QtWidgets import QListWidget, QListWidgetItem, QFileDialog, QStyleFactory
+from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QMessageBox, QLabel, QCheckBox, QComboBox, QRadioButton
+from PyQt5.QtWidgets import QListWidget, QListWidgetItem, QFileDialog, QStyleFactory, QDoubleSpinBox, QSpinBox
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QFont, QIcon
 import os
 import json
 import webbrowser
 from judgmentsConfig import judgmentsConfig
-from sorter import threSort
+from sorter import threSort, updateConfig
 from newConfigWindow import newConf
 from cutJudgmentsConfig import cutJudgmentsConfig
 from duplicationWindow import duplWin
@@ -20,9 +20,11 @@ with open('Settings/settings.json') as f:
 if settings['beatSaberPath'] and os.path.exists(settings['beatSaberPath']):
     path = settings['beatSaberPath']
     dark_mode = settings['darkMode']
+    CFO = settings['convertFromOld']
     isFirstTimeOpening = False
 else:
     path = ''
+    CFO = settings['convertFromOld']
     dark_mode = settings['darkMode']
     isFirstTimeOpening = True
 
@@ -35,7 +37,7 @@ class App(QWidget):
         self.top = 100
         self.width = 800
         self.height = 600
-        self.windowName = 'HSV Configurator (Version : 0.1.8)'
+        self.windowName = 'HSV Configurator (Version : 0.1.9)'
         self.Arial12Font = QFont('Arial', 12)
         self.Arial12Font.setBold(True)
         self.Arial12Font.setPixelSize(16)
@@ -48,7 +50,6 @@ class App(QWidget):
         self.setFont(self.base8Font)
         self.al = Qt.AlignCenter
         self.initUI()
-        self.darkMode()
 
     def initUI(self):
         self.setMenuButton()
@@ -57,8 +58,8 @@ class App(QWidget):
         self.setGeometry(self.left, self.top, self.width, self.height)
         self.setFixedSize(self.width, self.height)
         self.fbDialog = QFileDialog(self)
-        self.fbDialog.setStyle(QStyleFactory.create('fusion'))
-        self.fbDialog.setFileMode(QFileDialog.Directory)
+        self.fbDialog.setOption(QFileDialog.ShowDirsOnly, True)
+        self.fbDialog.setFileMode(QFileDialog.DirectoryOnly)
         self.fbDialog.setDirectory(path)
         self.setWindowIcon(QIcon('Settings/icon.png'))
         self.show()
@@ -165,7 +166,7 @@ class App(QWidget):
         self.confList.resize(780, 530)
         conf = os.listdir(path)
         for item in conf:
-            if item[-5: len(item)] == '.json':
+            if item.endswith('.json'):
                 Item = QListWidgetItem(item[0:-5])
                 Item.setData(Qt.UserRole, {'path': item})
                 Item.setFont(self.Arial12FontNB)
@@ -182,7 +183,11 @@ class App(QWidget):
         name = name.replace('\\', '_').replace('|', '_').replace('?', '_').replace('*', '_')
         self.newConfWin.close()
 
-        with open('Settings/empty.json') as f2:
+        if self.newConfWin.oldConfigCB.isChecked():
+            template = 'Settings/emptyOld.json'
+        else:
+            template = 'Settings/empty.json'
+        with open(template) as f2:
             with open(path + name + '.json', 'w') as f3:
                 f3.write(f2.read())
 
@@ -256,8 +261,18 @@ class App(QWidget):
             self.darkModeCB.setChecked(True)
         else:
             self.darkModeCB.setChecked(False)
-        self.darkModeCB.stateChanged.connect(lambda: self.setDarkMode(self.darkModeCB.isChecked()))
+        # self.darkModeCB.stateChanged.connect(lambda: self.setDarkMode(self.darkModeCB.isChecked()))
         self.darkModeCB.show()
+
+        self.CFOCB = QCheckBox('Convert to new HSV Config format', self)
+        self.CFOCB.setGeometry(10, 130, 400, 23)
+        self.CFOCB.setFont(self.Arial12FontNB)
+        if CFO:
+            self.CFOCB.setChecked(True)
+        else:
+            self.CFOCB.setChecked(False)
+        self.CFOCB.stateChanged.connect(lambda: self.setCFO(self.CFOCB.isChecked()))
+        self.CFOCB.show()
 
         self.backButton.show()
 
@@ -266,10 +281,15 @@ class App(QWidget):
         dark_mode = mode
         self.darkMode()
 
+    def setCFO(self, mode):
+        global CFO
+        CFO = mode
+        self.settingsUpdate()
+
     def darkMode(self):
         global dark_mode
         if dark_mode:
-            self.setStyle(QStyleFactory.create('Windows'))
+            self.setStyle(QStyleFactory.create('Fusion'))
             self.setStyleSheet(open('Settings/darkModeSS').read())
             self.fbDialog.setStyleSheet(
                 'QLabel {color: #ffffff;} QWidget{background-color: #121212;} QLineEdit{color: #ffffff;} QComboBox{color: #ffffff;} QListView{color: #ffffff;}')
@@ -282,7 +302,7 @@ class App(QWidget):
         self.settingsUpdate()
 
     def bsPathBrowseClick(self):
-        self.fbDialog.currentChanged.connect(lambda: self.pathLabel.setText(self.fbDialog.directory().path()))
+        self.fbDialog.currentChanged.connect(lambda: self.pathLabel.setText(self.fbDialog.selectedFiles()[0]))
         self.fbDialog.show()
 
     def backToMenuButtonClick(self):
@@ -299,7 +319,7 @@ class App(QWidget):
         self.settingsUpdate()
 
     def settingsUpdate(self):
-        settingsUpdate = {'beatSaberPath': path, 'darkMode': dark_mode}
+        settingsUpdate = {'beatSaberPath': path, 'darkMode': dark_mode, "convertFromOld": CFO}
         with open('Settings/settings.json', 'w') as f2:
             json.dump(settingsUpdate, f2)
 
@@ -310,7 +330,11 @@ class App(QWidget):
         with open(path + self.confList.currentItem().data(Qt.UserRole)["path"]) as f2:
             self.conf = json.loads(f2.read())
             self.conf['judgments'] = threSort(self.conf['judgments'])
-        self.checkConfig()
+        if int(str(self.conf['majorVersion']) + str(self.conf['minorVersion']) + str(self.conf['patchVersion'])) > 302:
+            self.isOld = False
+        else:
+            self.isOld = True
+        self.updateConfig()
         self.nextEdit1Button = QPushButton('Next', self)
         self.nextEdit1Button.move(710, 570)
         self.nextEdit1Button.resize(80, 23)
@@ -380,38 +404,111 @@ class App(QWidget):
             self.intermediateUpdateCB.setChecked(True)
         self.intermediateUpdateCB.show()
 
-        self.decimalTimeNumLabel = QLabel('Time dependency decimal precision (between 0 and 99)', self)
+        self.decimalTimeNumLabel = QLabel('Time dependency decimal precision', self)
         self.decimalTimeNumLabel.move(10, 170)
-        self.decimalTimeNumLabel.resize(400, 23)
+        self.decimalTimeNumLabel.resize(300, 23)
         self.decimalTimeNumLabel.setFont(self.base12Font)
         self.decimalTimeNumLabel.show()
 
-        self.decimalTimeNumTB = QLineEdit(str(self.conf['timeDependencyDecimalPrecision']), self)
-        self.decimalTimeNumTB.move(420, 170)
-        self.decimalTimeNumTB.resize(100, 23)
-        self.decimalTimeNumTB.show()
+        self.decimalTimeNumSB = QSpinBox(self)
+        self.decimalTimeNumSB.setGeometry(275, 170, 100, 23)
+        self.decimalTimeNumSB.setValue(self.conf['timeDependencyDecimalPrecision'])
+        self.decimalTimeNumSB.setMaximum(99)
+        self.decimalTimeNumSB.show()
 
-        self.decimalTimeOffLabel = QLabel('Time dependency decimal offset (between 0 and 38)', self)
+        self.decimalTimeOffLabel = QLabel('Time dependency decimal offset', self)
         self.decimalTimeOffLabel.move(10, 210)
-        self.decimalTimeOffLabel.resize(400, 23)
+        self.decimalTimeOffLabel.resize(300, 23)
         self.decimalTimeOffLabel.setFont(self.base12Font)
         self.decimalTimeOffLabel.show()
 
-        self.decimalTimeOffTB = QLineEdit(str(self.conf['timeDependencyDecimalOffset']), self)
-        self.decimalTimeOffTB.move(390, 210)
-        self.decimalTimeOffTB.resize(100, 23)
-        self.decimalTimeOffTB.show()
+        self.decimalTimeOffSB = QSpinBox(self)
+        self.decimalTimeOffSB.setGeometry(275, 210, 100, 23)
+        self.decimalTimeOffSB.setMaximum(38)
+        self.decimalTimeOffSB.setValue(self.conf['timeDependencyDecimalOffset'])
+        self.decimalTimeOffSB.show()
 
-        self.fixedPosCB = QCheckBox('Is the score position static', self)
-        self.fixedPosCB.setFont(self.base12Font)
-        self.fixedPosCB.resize(210, 23)
-        self.fixedPosCB.move(10, 250)
-        if self.conf['useFixedPos']:
-            self.fixedPosCB.setChecked(True)
-            self.fixedPosCBChangeState(True)
-        self.fixedPosCB.stateChanged.connect(self.fixedPosCBChangeState)
-        self.fixedPosCB.show()
+        self.fixedPosRB = QRadioButton('Static score position', self)
+        self.fixedPosRB.setFont(self.base12Font)
+        self.fixedPosRB.resize(160, 23)
+        self.fixedPosRB.move(80, 250)
+        self.fixedPosRB.toggled.connect(lambda x: self.fixedPosRBChangeState(x, 'fixed'))
+        self.fixedPosRB.show()
 
+        self.offsetPosRB = QRadioButton('Animated target position offset', self)
+        self.offsetPosRB.setFont(self.base12Font)
+        self.offsetPosRB.setGeometry(260, 250, 250, 23)
+        self.offsetPosRB.toggled.connect(lambda x: self.fixedPosRBChangeState(x, 'offset'))
+        self.offsetPosRB.show()
+
+        self.noneRB = QRadioButton('None', self)
+        self.noneRB.setFont(self.base12Font)
+        self.noneRB.setGeometry(10, 250, 60, 23)
+        self.noneRB.toggled.connect(lambda x: self.fixedPosRBChangeState(x, 'none'))
+        self.noneRB.show()
+
+        self.posXLabel = QLabel('X', self)
+        self.posXLabel.resize(10, 23)
+        self.posXLabel.setFont(self.base12Font)
+        self.posXLabel.move(10, 280)
+
+        self.posXSB = QDoubleSpinBox(self)
+        self.posXSB.setGeometry(10, 280, 100, 23)
+        self.posXSB.setDecimals(1)
+        self.posXSB.setSingleStep(0.1)
+        if self.isOld:
+            self.posXSB.setValue(self.conf['fixedPosX'])
+        elif not self.conf['fixedPosition']:
+            self.posXSB.setValue(0.0)
+        else:
+            self.posXSB.setValue(self.conf['fixedPosition']['x'])
+
+        self.posYLabel = QLabel('Y', self)
+        self.posYLabel.resize(10, 23)
+        self.posYLabel.setFont(self.base12Font)
+        self.posYLabel.move(10, 310)
+
+        self.posYSB = QDoubleSpinBox(self)
+        self.posYSB.setGeometry(10, 310, 100, 23)
+        self.posYSB.setDecimals(1)
+        self.posYSB.setSingleStep(0.1)
+        if self.isOld:
+            self.posYSB.setValue(self.conf['fixedPosY'])
+        elif not self.conf['fixedPosition']:
+            self.posYSB.setValue(0.0)
+        else:
+            self.posYSB.setValue(self.conf['fixedPosition']['y'])
+
+        self.posZLabel = QLabel('Z', self)
+        self.posZLabel.resize(10, 23)
+        self.posZLabel.setFont(self.base12Font)
+        self.posZLabel.move(10, 340)
+
+        self.posZSB = QDoubleSpinBox(self)
+        self.posZSB.setGeometry(10, 340, 100, 23)
+        self.posZSB.setDecimals(1)
+        self.posZSB.setSingleStep(0.1)
+        if self.isOld:
+            self.posZSB.setValue(self.conf['fixedPosZ'])
+        elif not self.conf['fixedPosition']:
+            self.posZSB.setValue(0.0)
+        else:
+            self.posZSB.setValue(self.conf['fixedPosition']['z'])
+
+        if self.isOld:
+            self.offsetPosRB.hide()
+            if self.conf['useFixedPos']:
+                self.fixedPosRBChangeState(True, 'fixed')
+            else:
+                self.noneRB.setChecked(True)
+        if not self.isOld and self.conf['fixedPosition']:
+            self.fixedPosRB.setChecked(True)
+            self.fixedPosRBChangeState(True, 'fixed')
+        elif not self.isOld and self.conf['targetPositionOffset']:
+            self.offsetPosRB.setChecked(True)
+            self.fixedPosRBChangeState(True, 'offset')
+        else:
+            self.noneRB.setChecked(True)
         self.edit1BackButton = QPushButton('Back', self)
         self.edit1BackButton.move(10, 570)
         self.edit1BackButton.resize(80, 23)
@@ -425,89 +522,83 @@ class App(QWidget):
         self.wikiButton.show()
         self.wikiButton.clicked.connect(self.openWiki)
 
-        self.edit1NSBackButton = QPushButton('Back (without saving)')
-
     def openWiki(self):
         webbrowser.open('https://github.com/ErisApps/HitScoreVisualizer#how-to-config-aka-config-explained')
 
+    def updateConfig(self):
+        if CFO and self.isOld:
+            self.checkConfig()
+            self.conf = updateConfig(self.conf)
+            self.isOld = False
+            self.checkConfig()
+        else:
+            self.checkConfig()
+
     def checkConfig(self):
         conf = self.conf
-        if 'isDefaultConfig' not in conf:
-            self.conf['isDefaultConfig'] = False
-        if 'useFixedPos' not in conf:
-            self.conf['useFixedPos'] = False
-        if 'doIntermediateUpdates' not in conf:
-            self.conf['doIntermediateUpdates'] = False
-        if 'timeDependencyDecimalPrecision' not in conf:
-            self.conf['timeDependencyDecimalPrecision'] = 0
-        if 'timeDependencyDecimalOffset' not in conf:
-            self.conf['timeDependencyDecimalOffset'] = 0
-        if 'fixedPosX' not in conf:
-            self.conf['fixedPosX'] = 0.0
-        if 'fixedPosY' not in conf:
-            self.conf['fixedPosY'] = 0.0
-        if 'fixedPosZ' not in conf:
-            self.conf['fixedPosZ'] = 0.0
-        if 'beforeCutAngleJudgments' not in conf:
-            self.conf['beforeCutAngleJudgments'] = []
-        if 'accuracyJudgments' not in conf:
-            self.conf['accuracyJudgments'] = []
-        if 'afterCutAngleJudgments' not in conf:
-            self.conf['afterCutAngleJudgments'] = []
-        if 'timeDependencyJudgments' not in conf:
-            self.conf['timeDependencyJudgments'] = []
+        if self.isOld:
+            if 'useFixedPos' not in conf:
+                self.conf['useFixedPos'] = False
+            if 'fixedPosX' not in conf:
+                self.conf['fixedPosX'] = 0.0
+            if 'fixedPosY' not in conf:
+                self.conf['fixedPosY'] = 0.0
+            if 'fixedPosZ' not in conf:
+                self.conf['fixedPosZ'] = 0.0
+        else:
+            if 'isDefaultConfig' not in conf:
+                self.conf['isDefaultConfig'] = False
+            if 'doIntermediateUpdates' not in conf:
+                self.conf['doIntermediateUpdates'] = False
+            if 'timeDependencyDecimalPrecision' not in conf:
+                self.conf['timeDependencyDecimalPrecision'] = 0
+            if 'timeDependencyDecimalOffset' not in conf:
+                self.conf['timeDependencyDecimalOffset'] = 0
+            if 'fixedPosition' not in conf:
+                self.conf['fixedPosition'] = None
+            if 'targetPositionOffset' not in conf:
+                self.conf['targetPositionOffset'] = None
+            if 'beforeCutAngleJudgments' not in conf:
+                self.conf['beforeCutAngleJudgments'] = []
+            if 'accuracyJudgments' not in conf:
+                self.conf['accuracyJudgments'] = []
+            if 'afterCutAngleJudgments' not in conf:
+                self.conf['afterCutAngleJudgments'] = []
+            if 'timeDependencyJudgments' not in conf:
+                self.conf['timeDependencyJudgments'] = []
+            if self.conf['fixedPosition'] and self.conf['targetPositionOffset']:
+                self.conf['targetPositionOffset'] = None
 
-    def fixedPosCBChangeState(self, state):
-        if state:
-            self.posXLabel = QLabel('X', self)
-            self.posXLabel.resize(10, 23)
-            self.posXLabel.setFont(self.base12Font)
-            self.posXLabel.move(240, 250)
+    def fixedPosRBChangeState(self, state, who):
+        if state and who != 'none':
+            self.posZSB.show()
+            self.posYSB.show()
+            self.posXSB.show()
+
             self.posXLabel.show()
-
-            self.posXTB = QLineEdit(str(self.conf['fixedPosX']), self)
-            self.posXTB.resize(100, 23)
-            self.posXTB.move(260, 250)
-            self.posXTB.show()
-
-            self.posYLabel = QLabel('Y', self)
-            self.posYLabel.resize(10, 23)
-            self.posYLabel.setFont(self.base12Font)
-            self.posYLabel.move(240, 280)
             self.posYLabel.show()
-
-            self.posYTB = QLineEdit(str(self.conf['fixedPosY']), self)
-            self.posYTB.resize(100, 23)
-            self.posYTB.move(260, 280)
-            self.posYTB.show()
-
-            self.posZLabel = QLabel('Z', self)
-            self.posZLabel.resize(10, 23)
-            self.posZLabel.setFont(self.base12Font)
-            self.posZLabel.move(240, 310)
             self.posZLabel.show()
-
-            self.posZTB = QLineEdit(str(self.conf['fixedPosZ']), self)
-            self.posZTB.resize(100, 23)
-            self.posZTB.move(260, 310)
-            self.posZTB.show()
-        elif not state:
-            self.posZTB.hide()
-            self.posYTB.hide()
-            self.posXTB.hide()
+    
+        elif state and who == 'none':
+            self.conf['fixedPosition'] = None
+            self.conf['targetPositionOffset'] = None
+            self.posZSB.hide()
+            self.posYSB.hide()
+            self.posXSB.hide()
 
             self.posXLabel.hide()
             self.posYLabel.hide()
             self.posZLabel.hide()
 
     def saveToFile(self):
-        with open(path + self.confList.currentItem().text() + '.json', 'w') as f2:
+        with open(path + self.confList.currentItem().data(Qt.UserRole)['path'], 'w') as f2:
             json.dump(self.conf, f2)
 
     def edit1BackClick(self):
         self.conf['isDefaultConfig'] = self.isDefaultCB.isChecked()
 
         combSel = self.textModeComB.currentIndex()
+
         if combSel == 0:
             self.conf['displayMode'] = 'format'
         elif combSel == 1:
@@ -520,49 +611,28 @@ class App(QWidget):
             self.conf['displayMode'] = ''
 
         self.conf['doIntermediateUpdates'] = self.intermediateUpdateCB.isChecked()
-        try:
-            int(self.decimalTimeNumTB.text())
-        except TypeError:
-            self.decimalTimeNumTB.setText('0')
-        if int(self.decimalTimeNumTB.text()) > 99 or int(self.decimalTimeNumTB.text()) < 0:
-            self.decimalTimeNumTB.setText('0')
+        self.conf['timeDependencyDecimalPrecision'] = self.decimalTimeNumSB.value()
+        self.conf['timeDependencyDecimalOffset'] = self.decimalTimeOffSB.value()
 
-        self.conf['timeDependencyDecimalPrecision'] = int(self.decimalTimeNumTB.text())
-
-        try:
-            int(self.decimalTimeOffTB.text())
-        except TypeError:
-            self.decimalTimeOffTB.setText('0')
-        if int(self.decimalTimeOffTB.text()) > 38 or int(self.decimalTimeOffTB.text()) < 0:
-            self.decimalTimeOffTB.setText('0')
-
-        self.conf['timeDependencyDecimalOffset'] = int(self.decimalTimeOffTB.text())
-
-        if self.fixedPosCB.isChecked():
-            self.conf['useFixedPos'] = True
-            try:
-                float(self.posXTB.text())
-            except TypeError:
-                self.posXTB.setText('0.0')
-
-            try:
-                float(self.posYTB.text())
-            except TypeError:
-                self.posYTB.setText('0.0')
-
-            try:
-                float(self.posZTB.text())
-            except TypeError:
-                self.posZTB.setText('0.0')
-
-            self.conf['fixedPosX'] = float(self.posXTB.text())
-            self.conf['fixedPosY'] = float(self.posYTB.text())
-            self.conf['fixedPosZ'] = float(self.posZTB.text())
+        if self.fixedPosRB.isChecked():
+            if self.isOld:
+                self.conf['useFixedPos'] = True
+                self.conf['fixedPosX'] = self.posXSB.value()
+                self.conf['fixedPosY'] = self.posYSB.value()
+                self.conf['fixedPosZ'] = self.posZSB.value()
+            else:
+                self.conf['fixedPos'] = {"x": self.posXSB.value(), "y": self.posYSB.value(), "z": self.posZSB.value()}
+                self.conf['targetPositionOffset'] = None
+        elif self.offsetPosRB.isChecked():
+            self.conf['targetPostionOffset'] = {"x": self.posXSB.value(), "y": self.posYSB.value(), "z": self.posZSB.value()}
+            self.conf['fixedPosition'] = None
         else:
-            self.conf['useFixedPos'] = False
-            self.conf['fixedPosX'] = 0.0
-            self.conf['fixedPosY'] = 0.0
-            self.conf['fixedPosZ'] = 0.0
+            if self.isOld:
+                self.conf['useFixedPos'] = False
+            else:
+                self.conf['fixedPosition'] = None
+                self.conf['targetPositionOffset'] = None
+
         self.saveToFile()
         self.backToMenuButtonClick()
 
@@ -570,6 +640,7 @@ class App(QWidget):
         self.conf['isDefaultConfig'] = self.isDefaultCB.isChecked()
 
         combSel = self.textModeComB.currentIndex()
+
         if combSel == 0:
             self.conf['displayMode'] = 'format'
         elif combSel == 1:
@@ -582,49 +653,28 @@ class App(QWidget):
             self.conf['displayMode'] = ''
 
         self.conf['doIntermediateUpdates'] = self.intermediateUpdateCB.isChecked()
-        try:
-            int(self.decimalTimeNumTB.text())
-        except TypeError:
-            self.decimalTimeNumTB.setText('0')
-        if int(self.decimalTimeNumTB.text()) > 99 or int(self.decimalTimeNumTB.text()) < 0:
-            self.decimalTimeNumTB.setText('0')
+        self.conf['timeDependencyDecimalPrecision'] = self.decimalTimeNumSB.value()
+        self.conf['timeDependencyDecimalOffset'] = self.decimalTimeOffSB.value()
 
-        self.conf['timeDependencyDecimalPrecision'] = int(self.decimalTimeNumTB.text())
-
-        try:
-            int(self.decimalTimeOffTB.text())
-        except TypeError:
-            self.decimalTimeOffTB.setText('0')
-        if int(self.decimalTimeOffTB.text()) > 38 or int(self.decimalTimeOffTB.text()) < 0:
-            self.decimalTimeOffTB.setText('0')
-
-        self.conf['timeDependencyDecimalOffset'] = int(self.decimalTimeOffTB.text())
-
-        if self.fixedPosCB.isChecked():
-            self.conf['useFixedPos'] = True
-            try:
-                float(self.posXTB.text())
-            except TypeError:
-                self.posXTB.setText('0.0')
-
-            try:
-                float(self.posYTB.text())
-            except TypeError:
-                self.posYTB.setText('0.0')
-
-            try:
-                float(self.posZTB.text())
-            except TypeError:
-                self.posZTB.setText('0.0')
-
-            self.conf['fixedPosX'] = float(self.posXTB.text())
-            self.conf['fixedPosY'] = float(self.posYTB.text())
-            self.conf['fixedPosZ'] = float(self.posZTB.text())
+        if self.fixedPosRB.isChecked():
+            if self.isOld:
+                self.conf['useFixedPos'] = True
+                self.conf['fixedPosX'] = self.posXSB.value()
+                self.conf['fixedPosY'] = self.posYSB.value()
+                self.conf['fixedPosZ'] = self.posZSB.value()
+            else:
+                self.conf['fixedPos'] = {"x": self.posXSB.value(), "y": self.posYSB.value(), "z": self.posZSB.value()}
+                self.conf['targetPositionOffset'] = None
+        elif self.offsetPosRB.isChecked():
+            self.conf['targetPostionOffset'] = {"x": self.posXSB.value(), "y": self.posYSB.value(),
+                                                "z": self.posZSB.value()}
+            self.conf['fixedPosition'] = None
         else:
-            self.conf['useFixedPos'] = False
-            self.conf['fixedPosX'] = 0.0
-            self.conf['fixedPosY'] = 0.0
-            self.conf['fixedPosZ'] = 0.0
+            if self.isOld:
+                self.conf['useFixedPos'] = False
+            else:
+                self.conf['fixedPosition'] = None
+                self.conf['targetPositionOffset'] = None
 
         self.saveToFile()
         self.hideAll()
@@ -710,10 +760,8 @@ class App(QWidget):
         self.threConfWin.confirmButton.clicked.connect(self.edit2confirmEditClick)
 
     def edit2confirmEditClick(self):
-        dat = self.threConfWin.checkData()
-        if dat:
-            self.conf = self.threConfWin.get_conf()
-            self.listThre()
+        self.conf = self.threConfWin.get_conf()
+        self.listThre()
 
     def editScene3(self):
         if 'timeDependencyJudgments' not in self.conf or self.conf['timeDependencyJudgments'] == None:
@@ -919,10 +967,8 @@ class App(QWidget):
         self.cutConfWin.confirmButton.clicked.connect(self.edit3EditJudConfClick)
 
     def edit3EditJudConfClick(self):
-        dat = self.cutConfWin.checkData()
-        if dat:
-            self.conf = self.cutConfWin.get_conf()
-            self.editScene3()
+        self.conf = self.cutConfWin.get_conf()
+        self.editScene3()
 
     def edit3NewJudClick(self, judType):
         self.conf[judType].append({"text": ""})

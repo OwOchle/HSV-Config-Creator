@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QWidget, QLabel, QLineEdit, QPushButton, QStyleFactory
+from PyQt5.QtWidgets import QWidget, QLabel, QPushButton, QSpinBox, QLineEdit, QDoubleSpinBox
 from PyQt5.QtGui import QFont, QIcon
 from PyQt5.QtCore import Qt
 
@@ -23,14 +23,14 @@ class cutJudgmentsConfig(QWidget):
         self.setWindowTitle('Configurator')
         icon = QIcon('Settings/icon.png')
         self.setWindowIcon(icon)
-        self.setFixedSize(400, 130)
+        self.setFixedSize(400, 100)
         self.show()
-        if dM:
+        '''if dM:
             self.setStyleSheet(open('Settings/darkModeSS').read())
-            self.setStyle(QStyleFactory.create('Windows'))
+            self.setStyle(QStyleFactory.create('Fusion'))
         else:
             self.setStyle(QStyleFactory().create('Fusion'))
-            self.setStyleSheet('{background-color: #f0f0ed;} QAbstractItemView {border: 2px solid darkgray;selection-background-color: lightgray;}')
+            self.setStyleSheet('{background-color: #f0f0ed;} QAbstractItemView {border: 2px solid darkgray;selection-background-color: lightgray;}')'''
         self.initUI()
 
     def initUI(self):
@@ -45,55 +45,51 @@ class cutJudgmentsConfig(QWidget):
         else:
             self.maxVal = None
 
-        self.thrLabel = QLabel(f'Threshold (between 0 and {self.maxVal})', self)
+        self.thrLabel = QLabel(f'Threshold (negative for else)', self)
         self.thrLabel.move(10, 10)
         self.thrLabel.resize(210, 20)
         self.thrLabel.setFont(self.arial12)
         self.thrLabel.show()
 
-        self.thrTB = QLineEdit(self)
+        if self.judType == 'timeDependencyJudgments':
+            self.thrSB = QDoubleSpinBox(self)
+            self.thrSB.setSingleStep(0.1)
+            self.thrSB.setDecimals(3)
+        else:
+            self.thrSB = QSpinBox(self)
         if 'threshold' in self.jud:
-            self.thrTB.setText(str(self.jud['threshold']))
-        self.thrTB.move(230, 10)
-        self.thrTB.resize(160, 23)
-        self.thrTB.show()
-
-        self.thrWarningLabel = QLabel(self)
-        self.thrWarningLabel.move(10, 40)
-        self.thrWarningLabel.resize(380, 20)
-        self.thrWarningLabel.setFont(self.arial12Bold)
-        self.thrWarningLabel.setAlignment(Qt.AlignCenter)
-        self.thrWarningLabel.show()
+            self.thrSB.setValue(self.jud['threshold'])
+        else:
+            self.thrSB.setValue(-1)
+        self.thrSB.move(230, 10)
+        self.thrSB.resize(160, 23)
+        self.thrSB.setMinimum(-1)
+        self.thrSB.setMaximum(self.maxVal)
+        self.thrSB.show()
 
         self.textLabel = QLabel('Text', self)
-        self.textLabel.move(10, 70)
+        self.textLabel.move(10, 40)
         self.textLabel.resize(30, 20)
         self.textLabel.setFont(self.arial12)
         self.textLabel.show()
 
         self.textTB = QLineEdit(self.jud['text'], self)
-        self.textTB.move(50, 70)
+        self.textTB.move(50, 40)
         self.textTB.resize(340, 23)
         self.textTB.show()
 
         self.confirmButton = QPushButton('Confirm', self)
-        self.confirmButton.move(10, 100)
+        self.confirmButton.move(10, 70)
         self.confirmButton.resize(380, 23)
         self.confirmButton.clicked.connect(self.confirmClick)
         self.confirmButton.show()
 
     def confirmClick(self):
-        isDataCorrect = self.checkData()
-        if isDataCorrect:
-            if self.thrTB.text() == '':
-                if 'threshold' in self.jud:
-                    self.jud.pop('threshold')
-            else:
-                if self.judType == 'timeDependencyJudgments':
-                    self.jud['threshold'] = float(self.thrTB.text().replace(',', '.'))
-                else:
-                    self.jud['threshold'] = int(self.thrTB.text())
-
+        if self.thrSB.value() < 0:
+            if 'threshold' in self.jud:
+                self.jud.pop('threshold')
+        else:
+            self.jud['threshold'] = self.thrSB.value()
             self.jud['text'] = self.textTB.text()
             self.conf[self.judType][self.ind] = self.jud
             self.hide()
@@ -101,45 +97,6 @@ class cutJudgmentsConfig(QWidget):
     def closeEvent(self, event):
         if self.new:
             self.conf['judgments'].pop(-1)
-
-    def checkData(self):
-        if self.thrTB.text() == '':
-            return True
-
-        if self.judType == 'timeDependencyJudgments':
-            thr = self.thrTB.text().replace(',', '.')
-            try:
-                num = float(thr)
-            except ValueError:
-                self.thrWarningLabel.setText(f'{thr} is not a valid number')
-                return False
-
-            if num > 1:
-                self.thrWarningLabel.setText(f'{num} is greater than 1')
-                return False
-
-            elif num < 0:
-                self.thrWarningLabel.setText(f'{num} is lower than 0')
-                return False
-
-            else:
-                return True
-
-        else:
-            try:
-                num = int(self.thrTB.text())
-            except ValueError:
-                self.thrWarningLabel.setText(f'{self.thrTB.text()} is not a valid number')
-                return False
-
-            if num > self.maxVal:
-                self.thrWarningLabel.setText(f'{num} is greater than {self.maxVal}')
-                return False
-            elif num < 0:
-                self.thrWarningLabel.setText(f'{num} is lower than 0')
-                return False
-            else:
-                return True
 
     def get_conf(self):
         return self.conf

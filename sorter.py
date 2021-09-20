@@ -22,3 +22,23 @@ def threSort(input):
         if 'threshold' not in item:
             output.append(item)
     return output
+
+
+def updateConfig(conf):
+    if conf['useFixedPos']:
+        NewConf = {'majorVersion': 3, 'minorVersion': 2, "patchVersion": 0,
+                   'fixedPosition': {"x": conf['fixedPosX'], "y": conf['fixedPosY'], "z": conf['fixedPosZ']}}
+    else:
+        NewConf = {'majorVersion': 3, 'minorVersion': 2, "patchVersion": 0, 'fixedPosition': None}
+    conf.pop('useFixedPos')
+    conf.pop('fixedPosX')
+    conf.pop('fixedPosY')
+    conf.pop('fixedPosZ')
+    conf.pop('majorVersion')
+    conf.pop('minorVersion')
+    conf.pop('patchVersion')
+
+    for item in conf:
+        NewConf[item] = conf[item]
+
+    return NewConf

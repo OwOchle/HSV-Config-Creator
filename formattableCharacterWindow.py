@@ -14,12 +14,12 @@ class addToken(QWidget):
         self.arial12Bold = QFont('Arial', 12)
         self.arial12Bold.setBold(True)
         self.show()
-        if dM:
+        '''if dM:
             self.setStyleSheet(open('Settings/darkModeSS').read())
-            self.setStyle(QStyleFactory.create('Windows'))
+            self.setStyle(QStyleFactory.create('Fusion'))
         else:
             self.setStyle(QStyleFactory().create('Fusion'))
-            self.setStyleSheet('{background-color: #f0f0ed;} QAbstractItemView {border: 2px solid darkgray;selection-background-color: lightgray;}')
+            self.setStyleSheet('{background-color: #f0f0ed;} QAbstractItemView {border: 2px solid darkgray;selection-background-color: lightgray;}')'''
         self.initUI()
 
     def initUI(self):

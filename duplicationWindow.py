@@ -14,11 +14,11 @@ class duplWin(QWidget):
         self.Arial12FontNB.setPixelSize(16)
         self.setWindowIcon(QIcon('Settings/icon.png'))
         self.setFixedSize(400, 100)
-        self.setWindowTitle('Duplicating ' + name)
+        self.setWindowTitle('Copying ' + name)
         self.name = name
         if dM:
             self.setStyleSheet(open('Settings/darkModeSS').read())
-            self.setStyle(QStyleFactory.create('Windows'))
+            self.setStyle(QStyleFactory.create('Fusion'))
         else:
             self.setStyle(QStyleFactory().create('Fusion'))
             self.setStyleSheet('{background-color: #f0f0ed;} QAbstractItemView {border: 2px solid darkgray;selection-background-color: lightgray;}')

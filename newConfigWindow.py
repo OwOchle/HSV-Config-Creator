@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QWidget, QLabel, QLineEdit, QPushButton, QStyleFactory
+from PyQt5.QtWidgets import QWidget, QLabel, QLineEdit, QPushButton, QStyleFactory, QCheckBox
 from PyQt5.QtGui import QFont, QIcon
 from PyQt5.QtCore import Qt
 
@@ -7,17 +7,17 @@ class newConf(QWidget):
 
     def __init__(self, dM):
         super().__init__()
-        self.setFixedSize(400, 100)
+        self.setFixedSize(400, 130)
         self.arial12 = QFont('Arial', 12)
         icon = QIcon('Settings/icon.png')
         self.setWindowIcon(icon)
         self.setWindowTitle('New config')
-        if dM:
+        '''if dM:
             self.setStyleSheet(open('Settings/darkModeSS').read())
-            self.setStyle(QStyleFactory.create('Windows'))
+            self.setStyle(QStyleFactory.create('Fusion'))
         else:
             self.setStyle(QStyleFactory().create('Fusion'))
-            self.setStyleSheet('{background-color: #f0f0ed;} QAbstractItemView {border: 2px solid darkgray;selection-background-color: lightgray;}')
+            self.setStyleSheet('{background-color: #f0f0ed;} QAbstractItemView {border: 2px solid darkgray;selection-background-color: lightgray;}')'''
         self.show()
         self.initUI()
 
@@ -34,7 +34,11 @@ class newConf(QWidget):
         self.nameTB.resize(380, 20)
         self.nameTB.show()
 
+        self.oldConfigCB = QCheckBox('Quest Config Format', self)
+        self.oldConfigCB.setGeometry(10, 70, 380, 23)
+        self.oldConfigCB.show()
+
         self.confirmButton = QPushButton('Confirm', self)
-        self.confirmButton.move(10, 70)
+        self.confirmButton.move(10, 100)
         self.confirmButton.resize(380, 20)
         self.confirmButton.show()
