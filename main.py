@@ -37,7 +37,7 @@ class App(QWidget):
         self.top = 100
         self.width = 800
         self.height = 600
-        self.windowName = 'HSV Configurator (Version : 0.1.9)'
+        self.windowName = 'HSV Configurator (Version : 0.2.0)'
         self.Arial12Font = QFont('Arial', 12)
         self.Arial12Font.setBold(True)
         self.Arial12Font.setPixelSize(16)
@@ -84,6 +84,7 @@ class App(QWidget):
     def menuScene(self):
         self.setConfList()
         self.setWindowTitle(self.windowName)
+        self.confList.itemDoubleClicked.connect(self.editClick)
 
         self.editButton = QPushButton('Edit', self)
         self.editButton.move(10, 570)
@@ -136,7 +137,8 @@ class App(QWidget):
 
     def dupliClick(self):
         if self.confList.currentItem():
-            self.duplWin = duplWin(self.confList.currentItem().text(), dark_mode)
+            self.duplWin = duplWin(self.confList.currentItem().text(),
+                                   self.confList.currentItem().data(Qt.UserRole)['path'], dark_mode)
             self.duplWin.confirmButton.clicked.connect(self.duplWinClick)
         else:
             self.plsSelConfLabel.setText('You need to choose a config')
@@ -152,7 +154,7 @@ class App(QWidget):
                 self.duplWin.confirmLabel.setText('A config already exists with this name')
             else:
                 self.duplWin.hide()
-                src = path + self.confList.currentItem().data(Qt.UserRole)['path']
+                src = path + self.duplWin.path
                 dst = path + name + '.json'
                 copyfile(src, dst)
         self.refreshClick()
@@ -303,6 +305,7 @@ class App(QWidget):
 
     def bsPathBrowseClick(self):
         self.fbDialog.currentChanged.connect(lambda: self.pathLabel.setText(self.fbDialog.selectedFiles()[0]))
+        self.fbDialog.finished.connect(lambda: self.pathLabel.setText(self.fbDialog.selectedFiles()[0]))
         self.fbDialog.show()
 
     def backToMenuButtonClick(self):

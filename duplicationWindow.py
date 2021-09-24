@@ -5,7 +5,7 @@ from PyQt5.QtCore import Qt
 
 class duplWin(QWidget):
 
-    def __init__(self, name, dM):
+    def __init__(self, name, path, dM):
         super().__init__()
         self.Arial12Font = QFont('Arial', 12)
         self.Arial12Font.setBold(True)
@@ -16,12 +16,13 @@ class duplWin(QWidget):
         self.setFixedSize(400, 100)
         self.setWindowTitle('Copying ' + name)
         self.name = name
-        if dM:
+        self.path = path
+        '''if dM:
             self.setStyleSheet(open('Settings/darkModeSS').read())
             self.setStyle(QStyleFactory.create('Fusion'))
         else:
             self.setStyle(QStyleFactory().create('Fusion'))
-            self.setStyleSheet('{background-color: #f0f0ed;} QAbstractItemView {border: 2px solid darkgray;selection-background-color: lightgray;}')
+            self.setStyleSheet('{background-color: #f0f0ed;} QAbstractItemView {border: 2px solid darkgray;selection-background-color: lightgray;}')'''
         self.show()
         self.initUi()
 
