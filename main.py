@@ -7,12 +7,13 @@ import os
 import json
 import webbrowser
 from judgmentsConfig import judgmentsConfig
-from sorter import threSort, updateConfig
+from usefulFunctions import threSort, updateConfig
 from newConfigWindow import newConf
 from cutJudgmentsConfig import cutJudgmentsConfig
 from duplicationWindow import duplWin
 from shutil import copyfile
 import traceback
+from HSVViewer import Viewer
 
 
 with open('Settings/settings.json') as f:
@@ -37,7 +38,7 @@ class App(QWidget):
         self.top = 100
         self.width = 800
         self.height = 600
-        self.windowName = 'HSV Configurator (Version : 0.2.0)'
+        self.windowName = 'HSV Configurator (Version : 0.3.0)'
         self.Arial12Font = QFont('Arial', 12)
         self.Arial12Font.setBold(True)
         self.Arial12Font.setPixelSize(16)
@@ -685,6 +686,12 @@ class App(QWidget):
 
     def editScene2(self):
         self.menuButton.show()
+        self.saveConfLabel.resize(530, 23)
+
+        self.viewerButton = QPushButton('Config Viewer', self)
+        self.viewerButton.setGeometry(620, 570, 80, 23)
+        self.viewerButton.clicked.connect(self.viewerButClick)
+        self.viewerButton.show()
 
         self.backEdit2Button = QPushButton('Back', self)
         self.backEdit2Button.move(10, 570)
@@ -732,6 +739,9 @@ class App(QWidget):
 
         self.wikiButton.show()
 
+    def viewerButClick(self):
+        self.viewer = Viewer(conf=self.conf)
+
     def listThre(self):
         self.thresholdList.clear()
         self.conf['judgments'] = threSort(self.conf['judgments'])
@@ -765,6 +775,8 @@ class App(QWidget):
     def edit2confirmEditClick(self):
         self.conf = self.threConfWin.get_conf()
         self.listThre()
+        if hasattr(self, 'viewer'):
+            self.viewer.updateFromMainWindow(self.conf)
 
     def editScene3(self):
         if 'timeDependencyJudgments' not in self.conf or self.conf['timeDependencyJudgments'] == None:
@@ -775,6 +787,7 @@ class App(QWidget):
 
         self.menuButton.show()
         self.saveConfLabel.show()
+        self.viewerButton.show()
 
         self.edit3BackButton = QPushButton('Back', self)
         self.edit3BackButton.move(self.backButton.pos())
@@ -972,6 +985,8 @@ class App(QWidget):
     def edit3EditJudConfClick(self):
         self.conf = self.cutConfWin.get_conf()
         self.editScene3()
+        if hasattr(self, 'viewer'):
+            self.viewer.updateFromMainWindow(self.conf)
 
     def edit3NewJudClick(self, judType):
         self.conf[judType].append({"text": ""})
